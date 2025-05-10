@@ -1,1 +1,6 @@
-STATISTICAL RETHINKING/*
+**/*.zip
+.zip
+**/*.json
+*.json
+**/*.log
+*.log
