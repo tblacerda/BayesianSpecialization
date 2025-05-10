@@ -1,0 +1,31 @@
+So we take the derivative of log
+likelihood, which I'm going to dub, l prime of theta. Taking the derivative here, the derivative
+of log of theta is one over theta, And then we subtract from that
+1 over 1 minus theta times the sum of the 1 minus y sub i's. We then set this equal to zero,
+and solve for theta. This gives us the sum of the y
+sub i's over a theta hat equals the sum of 1 minus y sub i,
+over one minus theta hat, where I'm plugging in now the theta hat
+that will make this set equal to zero. This results in a theta hat value of 1
+over n, times the sum of the y sub i's. This is, in fact, the same p hat that we
+got earlier from the other approach, or in this case 72 over 400 gives us a .18. And so that's our maximum likelihood
+estimate of the probability. You can see we have the same
+estimate as before, and this is one of the reasons
+we use the obvious estimator. Maximum likelihood estimators have many
+desirable mathematical properties. They're unbiased, they're consistent,
+and they're invariant. In this case we can also use the Central
+Limit Theorem to give us an approximate confidence interval. In the central limit theorem, you get
+a confidence interval of theta hat plus or minus 1.96 times the square root of theta
+hat times 1 minus theta hat over n. In general, under certain regularity
+conditions, we can say that the MLE is approximately normally distributed
+with mean at the true value of theta and variance one over the Fisher
+information the value at theta hat. We'll return to the Fisher
+information later. The Fisher information is a measure of how much information about
+theta is in each data point. It's a function of theta. For a Bernoulli random variable,
+the Fisher information turns out to be 1 over theta times 1 minus theta. So the information is larger,
+when theta is near zero or near one, and it's the smallest when
+theta is near one half. This makes sense,
+because if you're flipping a coin, and you're getting a mix of heads and
+tails, that tells you a little bit less than if you're getting nearly all heads or
+nearly all tails. That's a lot more informative
+about the value of theta. We'll return to the calculation of
+the information later in this course.

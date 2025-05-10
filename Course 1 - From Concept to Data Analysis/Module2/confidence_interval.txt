@@ -1,0 +1,56 @@
+Next, let's do a brief review of
+the frequentist approach to inference, which will be useful for
+contrasting with the Bayesian approach. Under the frequentist paradigm,
+you view the data as a random sample from some larger,
+potentially hypothetical population. We can then make
+probability statements i.e, long-run frequency statements
+based on this larger population. As an example let's suppose
+we flip a coin a 100 times. And we get 44 heads and 56 tails. We can view these 100 flips as
+a random sample from a much larger infinite hypothetical population
+of flips from this coin. In this case we can say
+that each flip x sub i follows a Bournelli distribution
+with some probability p. In this case (p) may be unknown, but we're assuming it's fixed because
+we have a particular physical coin. We can ask what's our best estimate
+of the probability of getting a head. Or estimate of (p). We can also ask how confident
+are we in that estimate. We can start down the mathematical
+approach by applying the Central Limit Theorem. Central Limit Theorem says
+that the sum of the 100 flips sum of the x of i's will follow
+approximately a normal distribution. Which mean 100p and variance 100p(1-p). Here I'm writing the squiggle
+with the dot above and below to mean approximately
+falls a distribution. By Central Limit Theorem we
+have this distribution and so by properties of
+normal 95% of the time. We'll get a result within 1.96
+standard deviations of the mean. Thus we can say 95% of the time,
+we expect to observe between 100p- 1.96 times the square
+root of 100p1-p. And 100p+1.96 times the square
+root if 100p times (1-p). In this case, we've observed 44 hats. So that we can estimate
+the probability of getting ahead, and write that p hat our estimate of p,
+as 44/100. We can then go back and plug this
+value into our theoretical quantity. This is what referred to as
+a Confidence Interval in this case. Confidence Interval,
+you may abbreviate as CI. The Confidence Interval is I'm
+going to be 44 plus or minus 1.96 times the square root of 44 times 0.56. Or in this case this is 44 plus or
+minus 9.7. Or the interval that
+goes from 34.3 to 53.7. So we can say that we're 95% confident That p is in the interval .343 to .537. We're 95% confident that the true
+probability of getting a head is in this interval. So if we want to ask a question
+do we think this is a fair coin. That it is reasonable that this is a fair
+coin because one half is in this interval. But we can also step back and
+say what does this interval really mean. What does it mean when I
+say we're 95% confident? Under the frequentist paradigm,
+what this means is we have to think back to our infinite hypothetical
+sequence of events. So if we were to repeat this trial
+an infinite number of times, or an arbitrary large number of times. Each time we create a confidence interval
+in this way based on the data we observe. Than on average 95% of the intervals we
+make will contain the true value of p. This makes senses along where
+in frequency explanation. On the other hand we might want to know
+something about this particular interval. Does this interval contain the true p. What's the probability that this
+interval contains a true p? Well, we don't know for
+this particular interval. But under the frequentist paradigm, we're assuming that there is
+a fixed right answer for p. Either p is in that interval or
+it's not in that interval. And so technically,
+from a frequentist perspective, the probability that p is in
+this interval is either 0 or 1. This is not a particularly
+satisfying explanation. In the other hand when we get to
+the Bayesian approach we will be able to compute an interval and actually say there
+is probably a p is in this interval is 95% based on a random interpretation
+of an unknown parameter

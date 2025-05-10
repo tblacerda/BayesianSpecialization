@@ -1,0 +1,43 @@
+Recording
+>> Bayes' Theorem is used to reverse the direction of conditioning. Suppose we want to ask
+what's the P(A|B) but we know it in terms of P(B|A). So we can write the P(A|B) = P(B|A) P(A) / P(B|A) P(A) + P(B| not A) P(not A) This does work out back to be the same as the P(A and
+B) / P(B). So to work this out in the context of
+the example of computer science and females in the class. We can say the P(CS/F) = P(F/CS) P(CS) / P(F/CS) P(CS) + P (F/ not a CS) P(not a CS). Plugging in the numbers,
+we get one-third times two-fifths over one-third times two-fifths plus five-eighteens times three-fifths. Working this all out,
+this ends up as 4 / 9. We can compare this to the direct answer. P (CS/F) = P (CS and F) / P (F). That one would have worked out
+to be 4 / 30, over 9 / 30, which gives us the same four-ninths. In this case, it's straight forward
+to get the answer either way. But here we're moving
+from a direct definition. Here, it's where we have it in terms
+of one direction of conditioning and we flip it to the other
+direction of conditioning. This is particularly useful
+in a lot of problems where it's posed in that direction. Another example was an early test for
+HIV antibodies known as the ELISA test. In that case, P (+ / HIV) = 0.977. P (- / no HIV) = 0.926. So this is a pretty accurate test. Over 90% of the time,
+it'll give you an accurate result. Today's tests are much more accurate, but in the early days this
+was still pretty good. That point a study found
+that among North American's, probability that a North American
+would have HIV was about 0.0026. So then we could ask, if we randomly
+selected someone from North America and we tested them and
+they tested positive for HIV, what's the probability that they actually
+have HIV given they've tested positive. This case we don't have all
+the information to compute it directly as easily but we have the information in the
+reverse direction of conditioning, and so it's the perfect time
+to use Bayes' Theorem. P(HIV / +) = P(+ / HIV) P(HIV) / P(+ / HIV) P(HIV) + P(+ / no HIV) P(no HIV) And
+now we can fill these pieces in. Before we go any further,
+I ask you to stop and think briefly. This is over 90% accurate, what sort of
+number do you expect to get in this case? All right, let's do the calculation. The probability they test positive
+given they have HIV is 0.977. The probability that
+they have HIV is 0.0026. We repeat the same thing at
+the bottom of the denominator. And then the second term, the probability they test positive given
+they don't have HIV, that's 1 minus this. And the probability they don't have HIV. If we now plug that into a calculator. We get this probability to be 0.033. The probability they
+have HIV is less then 4%, even though they've tested positive on
+a test that is nominally quite accurate. Is this surprising? It is for most people. Why is this so? It's because this is a rare disease and this is actually fairly common
+a problem for rare diseases. [COUGH] The number of false positives, greatly outnumbers the true positives
+because it's a rare disease. So even though the test is very accurate, we get more false positives
+than we get true positives. This obviously has important
+policy implications for things like mandatory testing. It makes much more sense to test in a sub
+population where the prevalence of HIV is higher, rather than in a general
+population where it's quite rare. To conclude, Bayes' Theorem is an important part of
+our approach to Bayesian statistics. We can use it to update our information. We start with prior beliefs,
+we'll collect data, we'll then condition on the data
+to lead to our posterior beliefs. Bayes' Theorem is the coherent
+way to do this updating.

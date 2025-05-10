@@ -1,0 +1,42 @@
+In the video lecture, we talked about
+a hospital with 400 heart attack patients, of whom 72 died within 30 days,
+and 328 are still alive. Let's plot the likelihood function for
+this example. We could use either a binomial likelihood,
+or a Bernoulli likelihood. These are actually the same,
+other than a constant term in the front, a combinatoric term for
+the binomial does not depend on theta. So we'll be getting the same answers, it's just a little rescaling
+on the vertical axis. It's much simpler to stick with
+the Bernoulli likelihood that doesn't have the combinatoric terms. The likelihood is a function
+of the mortality rate theta. So we'll create a function in r,
+we can use the function command, and store our function in an object. You can call this object likelihood. Use the function command and we specify
+what arguments this function will have. We'll need total sample size, n, the number of deaths, y, and
+the value of the parameter theta. We specified the function
+inside of curly braces. In this case, all we needed to
+do is return a computed value. So we'll use the return function to
+return that value and here we just put in the likelihood formula,
+which in this case, is theta to the y times one minus theta to the n minus y. To plot likelihood will create a sequence
+of points with mortality rates between zero and one and then plot
+the likelihood values over that sequence. So I'll define sequence of values for
+theta is in sequence command. Here we go from 0.01, 2.99, in increments of 0.01. We can now plot this. We're going to call the likelihood
+function over this sequence, it's an n equals 400,
+y equals 72 and our vector theta. This pops up a plot. And if we look carefully,
+we can say that the likelihood is maximized at the value 72 over 400 or
+0.18. This might be a little bit
+difficult to see in the plot. And so, one thing that can help
+is we can add a vertical line is on the a b line command and
+say vertical line f point one eight. Adding that in makes it very clearly
+that this likelihood is maximized at 72 over 400. We can also do the same
+with the log likelihood. Which in many cases is easier and
+more stable numerically to compute. We can define a function for
+the log likelihood, say log like. Which again is a function of n,
+y and theta. Here, we'll return the value
+from the log likelihood which is y times the log of theta Plus n minus y times the log of one minus theta. Now we can plot the sequence against
+the log likelihood of that sequence. [SOUND] It's a smoother function. A little bit more difficult
+to see where the maximum is. Again, adding the vertical line
+helps us see the maximum at 0.18. Plotting this as a series of
+points doesn't give us necessarily the best picture. We could actually do this
+as a line plot instead. In r, we can use the up arrow to go
+back to a previous command we've run. So if I hit up three times I can get back
+to the function or to one of the plots. Here, I can add another argument. The plot command has many,
+many possible optional arguments. One of them is the type of plot. If I say type equals double
+quotation lowercase l, that tell us, tells r to make a line plot.

@@ -1,0 +1,42 @@
+Some more examples of maximum
+likelihood estimators. The exponential distribution. Suppose that we have samples
+from an exponential distribution with parameter lambda. Recall that the density is the product of lambda e to the minus lambda, x sub i. Working on this product, we can
+actually collapse it, so that this is lambda to the n times e to the minus
+lambda times the sum of the x sub is. Thus the likelihood function
+as a function of lambda, given x, is lambda to the n, e to
+the minus lambda, sum of the x sub is. We take the log of this,
+we get the log likelihood, which is m log lambda minus lambda
+times the sum of the x sub is. We take the first derivative of this. We get n over lambda minus
+the sum of the x sub is. We set that equal to 0. This gives us a maximum
+likelihood estimate, lambda half of n over the sum of
+x of is or 1 over the average. This makes sense because the mean for an
+exponential distribution is 1 over lambda. And so
+if we take 1 over the sample average, we get a maximum likelihood estimate for
+lambda. Another example would be
+a uniform distribution. Suppose the x sun is, or our iid,
+from uniform distribution where we know it starts at 0 but
+the upper end point theta is unknown. This case, our density function, Is the product when i goes 1 to
+n of 1 over theta, the density, times an indicator function that all
+the observations are between 0 and theta. The likelihood then we can
+rewrite as L of theta, given x. The product of these 1 over thetas
+is just theta to the minus n. Combining all the indicator functions, for this to be a 1,
+each of these has to be true. These are each going to be true if all
+the observations are bigger than 0, as in the minimum of the x is
+bigger than or equal to 0. And then the maximum of the xs
+is less than or equal to theta. In this particular case,
+we don't have a need for a logarithm, it's not actually going to help us. This is one of the few exceptions
+where the logarithm is not so helpful. So we'll look directly at the derivative
+of the likelihood itself. Derivative of theta to the minus n is minus n to the theta to -n + 1. And then this indicator
+function hangs around. They don't go away when
+you take derivatives. They just hang around. So now we can ask, can we set this
+equal to 0 and solve for theta? Well it turns out, this is not equal
+to 0 for any theta positive value. We need theta to be
+strictly larger than 0. This will never be a 0 in that interval. However, we can also note that for theta
+positive, this will always be negative. The derivative is negative,
+that says this is a decreasing function. So this function will be maximized when
+we pick theta as small as possible. What's the smallest possible
+value of theta we can pick? Well we need in particular for theta
+to be larger than all of the x sub is. And so, the maximum likelihood estimate
+is the maximum of the x sub i. We find the largest value of our data,
+and that's the smallest possible value theta could be, and
+that's our maximum likelihood estimate.

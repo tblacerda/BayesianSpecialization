@@ -1,0 +1,37 @@
+How do we choose a prior? Our prior needs to represent our
+personal perspective, our beliefs, and our uncertainties. Theoretically we're defining a cumulative
+distribution function for the parameter. So in particular we're defining
+probability that theta is lesser or equal to some value of c for
+all possible c on the real line. So this is true for
+an infinite number of possible sets, we're defining probabilities. This isn't practical to do. And it would be very
+difficult to do coherently. So that all the probabilities
+were consistent. In practice, we work with a convenient
+family that's sufficiently flexible such that a member of the family
+will represent our beliefs. And we can build an external information
+if available such as previous experiments. Generally if one has enough data, the information in the data will
+overwhelm the invasion of prior. And so it, prior is not particularly
+important in terms of what you get for the posterior. Any reasonable choice of prior will lead
+to approximately the same posterior. However, there are some
+things that can go wrong. Suppose we chose a prior that says, the probability of theta equals one half,
+equals one. And thus the probability of theta
+equals any other value is zero. If we do this, we'll see our
+posterior f of theta given y, is proportional to f of y given theta,
+f of theta. Turns out to be just f of theta. Our data won't factor in if we
+only put probability one on a single point in our prior. We can also think of this prior
+as a point mass at one half. Such as a Dirac delta function. So in the basic context, events with prior probability of zero
+have posterior probability of zero. Events with prior probability of one,
+have posterior probability of one. Thus a good bayesian will not
+assign probability of zero or one to any event that has already
+occurred or already known not to occur. A useful concept in terms of choosing
+priors is that of calibration. Calibration of predictive intervals. So if we make an interval where we're
+saying we predict 95% of new data points will occur in this interval. It would be good if in reality 95%
+of new data points actually did fall in that interval. How do we calibrate to reality? This is actually more frequent as
+concept but this is important for practical substicle purposes that
+are results do reflect reality. So we can compute a predictive interval, this is an interval such that 95% of new
+observations are expected to fall into it. So it's an interval for
+the data, for y or x. Rather than an interval for theta,
+like we've been looking at. In particular, we can write
+this as f of y is the integral. F of y, given theta. Times the prior F of theta, D theta. We can also see this as integrating
+the joint density of Y and theta, integrating out theta
+to get the marginal for Y. So this is our prior predictive,
+before we observe any data.

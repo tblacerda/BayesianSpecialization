@@ -1,0 +1,65 @@
+R is an open source
+statistical software package. It can be freely
+downloaded a rproject.org. There are other Coursera courses that
+provide detailed lessons on using R. Here, I will just provide a short
+introduction to try to get you using R for the task needed in this course. First, launch R [SOUND]. Or we'll do basic arithmetic. You can just type in an expression and
+hit Enter. For example, (1+2) x 3. As you can see,
+R knows the correct order of operations. R is an object oriented environment, meaning that almost everything that
+it does revolves around objects. Objects have names and
+you can assign values to objects. For example, assigning a number. We can have an object x, an assign
+the value 6 to it by typing in x equals 6. If we want to see the value, we can
+then enter the name of the object, and R will display the value. We can also use descriptive names. For example, total revenue and assign that a value of 18.4. We can copy an object by
+assigning to another name. If I have expenses, and that has a value
+of six, but I already have six in x. I can just say expenses equal x. You can also assign the result
+of an operation to an object. For example, net profit would be total revenue minus expenses. We type in just the name of the object and
+it will give us the value in it. And you can see here It has done
+the subtraction and has saved the result. You have some flexibility with names,
+but you can't use certain characters, such as spaces, in the name. R also has functions. To write a function, you type its name followed by parentheses
+with any arguments within the parentheses. For example, the C function,
+will store a column of data. Or it will concatenate data. We might want to assign to a, variable z, the set of data that goes two,
+three, four, five, and six. You could see this data set is
+now stored in the object Z. It stores it as a vector. We can then use functions
+to get more information or do analysis on these objects. We can ask what's the mean or
+average of the values in Z. We can ask what's the variance of Z or what's the standard deviation of Z Which
+is the square root of the variance. We can use the function
+to create a sequence. The SEQ function creates a sequence. And we tell it what the starting point is, the front value what the ending point is,
+the 2 value. And what increment we want to use,
+the buy variable. This gives us a sequence that goes from
+0.1 to 0.9, going in increments of 0.1. Here we specified three arguments and
+we've given them all by name. If we don't name the arguments
+We can just specify numbers, and R will fill them in in order. Any arguments we don't specify
+will get the default value, assuming they're at the end of the list. So for example, if we say sequence from
+1 to 10, it's filling them in in order. The first number we give is the from. The second number is the to. And then we haven't specified a by and
+it will use the default, which in this case is by once at a time,
+and so this will give us a sequence
+that goes from one to ten. Let's take a brief look at one of
+the built in data sets in ARM this is the trees data set. This is a set of trees and
+gives us the diameter the height and the volume of the tree. We can learn some more by
+using the help function. This opens up a new window, and
+gives us information about the data set including references and
+some examples of analysis. It gives us some more definition
+showing that, indeed, this is a diameter a height and a volume. As you see here, there are labels for
+each of these columns, they're named. We can access these names in our
+by using the attach command. This says to look in the trees object for
+other additional names. We can ask what are the names,
+by using the names command. These are the same ones that we see
+when we look at the data set itself. We can then use these names to
+directly access these variables. For example, we want to make a histogram
+of the girth, or diameter, of these trees. And then we say hist,
+like it's a histogram function and it automatically pops up a new window for
+us. From the histogram we can see, that most
+of the trees have diameters between eight and 18 inches, with one larger tree. We can also make scatterplots. Putting the girth on the x axis and the height on the y axis to see
+how height relates to diameter. As you can see here, in general,
+the wider the tree, the taller the tree. There's a function in R called pairs, which allows us to make all possible
+Pairwise scatter plots for the dataset. So if we say pairs of trees, we have each of the three variables
+plotted against each of the other ones. So for example, in this box here we have girth on
+the x axis and height on the y axis. And this is exactly the plot
+that we had previously. In the lower left here, we have girth
+on x axis and volume on the y axis. And we can see there's a very strong
+relationship between total volume of timber and the tree, and
+how wide the tree is. Similarly, there's a strong relationship
+between the height of the tree and the volume of the tree. In the upper corner, we have the mirror images of these plots
+with the variables on the opposite axis. And so this plot here in the upper
+right has volume on the x axis and girth on the y axis. Finally, we can get numerical summaries
+using the summary command for each of the variables this will
+give us the mean, the median, the range, and the quantiles.
