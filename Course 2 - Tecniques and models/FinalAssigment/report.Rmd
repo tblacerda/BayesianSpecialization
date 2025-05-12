@@ -1,0 +1,234 @@
+---
+title: "Graded Assignment: Data Analysis Project"
+subtitle: "Bayesian Statistics Specialization: Course 2, Techniques and Models"
+author: "Tiago B. Lacerda"
+date: "2025-05-11"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{fontspec}
+  - \usepackage{amsmath}
+  - \usepackage[utf8]{inputenc}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(readxl)
+library(dplyr)
+library(rjags)
+library(coda)
+library(tidybayes)
+library(tidyr)
+library(HDInterval)
+library(writexl)
+library(tidyverse)
+```
+
+# Executive Summary
+
+# Introduction
+
+In modern mobile networks (4G and 5G), operators face the challenge of allocating limited resources efficiently to maintain and enhance service quality. A critical performance metric in this context is the Excellent Consistent Quality (ECQ) test success rate at individual sites. ECQ assessments evaluate whether networks consistently support demanding applications such as video streaming, video calls, and gaming, ensuring a seamless user experience .
+
+These tests are typically conducted on Android or iOS devices with embedded SDKs in applications, contingent upon user consent. They measure key performance indicators (KPIs) including download speed, upload speed, latency, jitter, packet loss, and time to first byte, aligning with thresholds recommended for various demanding applications .
+
+However, the variability in the number of tests across sites—some reporting only a handful while others report hundreds due to natural user mobility—poses a significant challenge. Naïve "site-by-site" estimates can be misleading: small samples may produce extreme rates simply due to chance, and citywide averages can obscure localized underperformance.
+
+To address this, we propose a three-level Bayesian hierarchical model that nests individual sites within municipalities and municipalities within ANFs. This framework facilitates the sharing of information across levels, yielding stable, data-driven estimates of each site’s true ECQ success probability while properly quantifying uncertainty.
+
+In this report, we begin by clearly defining the problem and the key question we aim to answer: Which sites have a true ECQ success probability significantly below the network average, and how can we rank them for targeted interventions, accounting for both data scarcity and local variability? We then detail the model structure, inference methodology, and decision-making strategy.
+
+### Problem Definition
+
+Our network comprises multiple sites scattered across a city, each running a varying number of ECQ tests. Some sites may report as few as 5–20 tests in a given period, while others conduct several hundred. The core challenge is to identify which sites genuinely underperform in terms of ECQ success rate and thus prioritize network improvement investments, without being misled by the randomness inherent in small test counts.
+
+#### Specific Question
+
+> *Which sites have a true ECQ success probability significantly below the network average, and how can rank them for targeted interventions, accounting for both data scarcity and local variability?*
+
+By formalizing this question, we set the stage for applying a hierarchical Bayes model that “borrows strength” across sites and municipalities, producing posterior distributions for each site’s success probability. These posteriors underpin credible intervals and ranking metrics that guide robust, data-informed investment decisions.
+
+### Data
+
+In this report, we analyze ECQ test data collected in October 2024 across Brazil's Northeast region, encompassing 8 ANFs. Each data point corresponds to a specific network site, identified by its unique ENDERECO_ID. For every site, we have recorded the total number of ECQ tests conducted and the number of successful tests (TESTES_ECQ_OK), indicating instances where the network met the stringent performance thresholds defined by the ECQ metric.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+data <- read_excel("ECQ_OUT_24.xlsx", sheet = "Export") %>%
+  filter(ANF %in% c(83, 81)) %>%
+  mutate(TESTES_ECQ_OK = round(TESTES_ECQ * ECQ, 0))  # Recriar a variável resposta
+
+# Criar IDs únicos para grupos (agora só ANF 83)
+data <- data %>%
+  group_by(ANF, MUNICIPIO) %>%
+  mutate(group_id = cur_group_id()) %>%
+  ungroup() %>% 
+  select(group_id, ANF, MUNICIPIO, ENDERECO_ID, TESTES_ECQ_OK, TESTES_ECQ)
+
+# Mapeamento de grupos para ANF (só 1 ANF agora)
+group_df <- data %>%
+  distinct(group_id, ANF) %>%
+  arrange(group_id)
+
+
+```
+
+Below is a summary of the data we will be using in our analysis.
+
+```{r DATA Structure, echo=FALSE, message=FALSE, warning=FALSE}
+str(data)
+```
+
+```{r PLOT, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+library(ggplot2)
+library(ggrepel)
+library(dplyr)  # para amostragem de dados
+
+# Supondo que 'data' seja seu dataframe
+# Amostra 20% dos pontos (ajuste o percentual conforme necessário)
+data_amostrada <- data %>% 
+  slice_sample(prop = 0.2)  # ou sample_n(100) para 100 pontos fixos
+
+ggplot(data_amostrada, aes(
+      x = TESTES_ECQ,
+      y = TESTES_ECQ_OK / TESTES_ECQ,
+      label = ENDERECO_ID
+    )) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_text_repel(
+    size = 3,
+    max.overlaps = 5
+  ) +
+  scale_y_continuous(labels = scales::percent_format(1)) +
+  labs(
+    title = "ECQ Tests vs. Success Rate (Amostra Aleatória)",
+    x = "Number of ECQ Tests",
+    y = "Success Rate (ECQ_OK / ECQ)",
+    caption = "Points represent a random sample of network sites (ENDERECO_ID)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.title = element_text(face = "bold")
+  )
+
+```
+
+### Bayesian Model
+
+### Hierarchical Model Specification
+
+## Bayesian Model
+
+### Level 1: Site-Level Observations
+
+For each site $s$, we observe: $$
+y_s \sim \text{Binomial}(n_{\text{tests}, \theta_s)
+$$ where $\theta_s$ is the true success probability for site $s$
+
+### Level 2: Municipality-Level Parameters
+
+$$
+\text{logit}(\theta_s) = \text{logit}(\mu_g) + \epsilon_s \\
+\epsilon_s \sim \mathcal{N}(0, \phi_{\text{site}}^{-1})
+$$ where: - $\mu_g$ = average success probability for municipality $g$ - $\phi_{\text{site}}$ = precision at site level
+
+### Level 3: ANF-Level Parameters
+
+$$
+\mu_g \sim \text{Beta}(\alpha_g, \beta_g)
+$$ where: $$
+\begin{aligned}
+\alpha_g &= \mu_{\text{ANF}} \cdot \phi_{\text{municipio}} + 0.1 \\
+\beta_g &= (1 - \mu_{\text{ANF}}) \cdot \phi_{\text{municipio}} + 0.1
+\end{aligned}
+$$ *(0.1 added for numerical stability)*
+
+### Hyperpriors
+
+
+```{r JAGS model, echo=TRUE, message=FALSE, warning=FALSE}
+
+jags_data <- list(
+  N_group = max(data$group_id),
+  N_sites = nrow(data),
+  group_per_site = data$group_id,  # Vetor de grupos por site
+  n_tests = data$TESTES_ECQ,       # Vetor de testes
+  n_success = data$TESTES_ECQ_OK   # Vetor de sucessos
+)
+
+model_string <- "
+model {
+  # Hiperparâmetros globais
+  mu_global ~ dbeta(3, 3)
+  sigma_global ~ dgamma(2, 0.5)  # Prior Gamma mais informativa
+
+  # Parâmetros ANF com restrição
+  alpha_anf <- mu_global * sigma_global
+  beta_anf <- (1 - mu_global) * sigma_global 
+  mu_anf ~ dbeta(alpha_anf, beta_anf)
+
+  # Priors para dispersão
+  phi_municipio ~ dgamma(2, 0.9)  # Gamma mais suave
+  phi_site ~ dgamma(2, 2)
+
+  # Loop por municípios
+  for(g in 1:N_group) {
+    a_municipio[g] <- mu_anf * phi_municipio
+    b_municipio[g] <- (1 - mu_anf) * phi_municipio
+    mu_municipio[g] ~ dbeta(a_municipio[g], b_municipio[g])
+  }
+
+  # Loop por sites
+  for(s in 1:N_sites) {
+    logit_mu_site[s] <- logit(mu_municipio[group_per_site[s]])
+    theta_site[s] <- ilogit(logit_mu_site[s] + epsilon[s])
+    epsilon[s] ~ dnorm(0, 1/phi_site)
+    
+    n_success[s] ~ dbin(theta_site[s], n_tests[s])
+  }
+}
+"
+
+
+inits <- function() {
+  list(
+    mu_global = rbeta(1, 3, 3),
+    sigma_global = rgamma(1, 2, 0.5),  # Coerente com o prior
+    phi_municipio = rgamma(1, 2, 2),
+    phi_site = rgamma(1, 2, 2),
+    mu_anf = rbeta(1, 2, 2)  # Inicialização direta
+    
+  )
+}
+
+model <- jags.model(
+  textConnection(model_string),
+  data = jags_data,
+  inits = inits,
+  n.chains = 4,
+  n.adapt = 500  # Aumentar fase de adaptação
+)
+
+samples <- coda.samples(
+  model,
+  variable.names = c("mu_anf", "mu_municipio", "theta_site"),
+  n.iter = 1000,
+  thin = 5
+)
+```
+
+### Conclusions: Summarize your conclusions based on the results (process step 8). This section may be combined with the results section.
+
+8.  Use the model
+
+-   Provide relevant posterior summaries.
+-   Interpret the model results in the context of the problem.
+-   Use the results to reach a conclusion.
+-   Acknowledge shortcomings of the model or caveats for your results.
+-   Write a report that does not exceed four pages (including figures and tables). It will be challenging to address all of the items above in so short a space. It is up to you to decide which parts should be emphasized and discussed in detail and which parts should merely be summarized in a sentence or two. Remember that a peer reviewer, after completing this course, should be able to re-create your results if you were to provide the data with your report (which you will not).
