@@ -10,6 +10,8 @@ header-includes:
   - \usepackage{fontspec}
   - \usepackage{amsmath}
   - \usepackage[utf8]{inputenc}
+  - \usepackage{pdflscape}
+  - \setlength{\tabcolsep}{3pt}
 ---
 
 ```{r setup, include=FALSE}
@@ -17,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```
 
-```{r message=FALSE, warning=FALSE, include=FALSE}
+```{r libraries, message=FALSE, warning=FALSE, include=FALSE}
 library(readxl)
 library(dplyr)
 library(rjags)
@@ -27,21 +29,16 @@ library(tidyr)
 library(HDInterval)
 library(writexl)
 library(tidyverse)
+start_time <- Sys.time()
 ```
 
 # Executive Summary
 
+This report presents a comprehensive analysis of the Excellent Consistent Quality (ECQ) success rate across various network sites in Brazil's Northeast region. The primary objective is to identify sites with significantly lower ECQ success probabilities compared to the network average, enabling targeted interventions for network improvement. A three-level Bayesian hierarchical model is employed to account for data scarcity and local variability, providing stable estimates of each site's true ECQ success probability. The analysis reveals critical insights into site performance, guiding data-informed investment decisions.
+
 # Introduction
 
-In modern mobile networks (4G and 5G), operators face the challenge of allocating limited resources efficiently to maintain and enhance service quality. A critical performance metric in this context is the Excellent Consistent Quality (ECQ) test success rate at individual sites. ECQ assessments evaluate whether networks consistently support demanding applications such as video streaming, video calls, and gaming, ensuring a seamless user experience .
-
-These tests are typically conducted on Android or iOS devices with embedded SDKs in applications, contingent upon user consent. They measure key performance indicators (KPIs) including download speed, upload speed, latency, jitter, packet loss, and time to first byte, aligning with thresholds recommended for various demanding applications .
-
-However, the variability in the number of tests across sites—some reporting only a handful while others report hundreds due to natural user mobility—poses a significant challenge. Naïve "site-by-site" estimates can be misleading: small samples may produce extreme rates simply due to chance, and citywide averages can obscure localized underperformance.
-
-To address this, we propose a three-level Bayesian hierarchical model that nests individual sites within municipalities and municipalities within ANFs. This framework facilitates the sharing of information across levels, yielding stable, data-driven estimates of each site’s true ECQ success probability while properly quantifying uncertainty.
-
-In this report, we begin by clearly defining the problem and the key question we aim to answer: Which sites have a true ECQ success probability significantly below the network average, and how can we rank them for targeted interventions, accounting for both data scarcity and local variability? We then detail the model structure, inference methodology, and decision-making strategy.
+In contemporary 4G and 5G mobile networks, operators must efficiently allocate limited resources to ensure high service quality. A pivotal metric in this context is the Excellent Consistent Quality (ECQ) success rate at individual sites. ECQ assessments evaluate whether networks consistently support demanding applications such as video streaming, video calls, and gaming, ensuring a seamless user experience. These tests are typically conducted with embedded SDKs in applications. They measure KPIs including download speed, upload speed, latency, jitter, packet loss, and time to first byte, aligning with thresholds recommended for various demanding applications. However, the variability in the number of tests across sites—some reporting only a handful while others report hundreds due to natural user mobility—poses a significant challenge. Naïve "site-by-site" estimates can be misleading: small samples may produce extreme rates simply due to chance, and citywide averages can obscure localized underperformance. To address this, a three-level Bayesian hierarchical model is proposed, nesting individual sites within municipalities and municipalities within ANFs.
 
 ### Problem Definition
 
@@ -57,7 +54,7 @@ By formalizing this question, we set the stage for applying a hierarchical Bayes
 
 In this report, we analyze ECQ test data collected in October 2024 across Brazil's Northeast region, encompassing 8 ANFs. Each data point corresponds to a specific network site, identified by its unique ENDERECO_ID. For every site, we have recorded the total number of ECQ tests conducted and the number of successful tests (TESTES_ECQ_OK), indicating instances where the network met the stringent performance thresholds defined by the ECQ metric.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r Leitura dos dados, echo=FALSE, message=FALSE, warning=FALSE}
 data <- read_excel("ECQ_OUT_24.xlsx", sheet = "Export") %>%
   filter(ANF %in% c(83, 81)) %>%
   mutate(TESTES_ECQ_OK = round(TESTES_ECQ * ECQ, 0))  # Recriar a variável resposta
@@ -87,12 +84,10 @@ str(data)
 
 library(ggplot2)
 library(ggrepel)
-library(dplyr)  # para amostragem de dados
+library(dplyr)  
 
-# Supondo que 'data' seja seu dataframe
-# Amostra 20% dos pontos (ajuste o percentual conforme necessário)
 data_amostrada <- data %>% 
-  slice_sample(prop = 0.2)  # ou sample_n(100) para 100 pontos fixos
+  slice_sample(prop = 0.5)  # ou sample_n(100) para 100 pontos fixos
 
 ggplot(data_amostrada, aes(
       x = TESTES_ECQ,
@@ -106,7 +101,7 @@ ggplot(data_amostrada, aes(
   ) +
   scale_y_continuous(labels = scales::percent_format(1)) +
   labs(
-    title = "ECQ Tests vs. Success Rate (Amostra Aleatória)",
+    title = "ECQ Tests vs. Success Rate (Random Sample)",
     x = "Number of ECQ Tests",
     y = "Success Rate (ECQ_OK / ECQ)",
     caption = "Points represent a random sample of network sites (ENDERECO_ID)"
@@ -119,41 +114,12 @@ ggplot(data_amostrada, aes(
 
 ```
 
-### Bayesian Model
+## Bayesian Model Structure
 
-### Hierarchical Model Specification
-
-## Bayesian Model
-
-### Level 1: Site-Level Observations
-
-For each site $s$, we observe: $$
-y_s \sim \text{Binomial}(n_{\text{tests}, \theta_s)
-$$ where $\theta_s$ is the true success probability for site $s$
-
-### Level 2: Municipality-Level Parameters
-
-$$
-\text{logit}(\theta_s) = \text{logit}(\mu_g) + \epsilon_s \\
-\epsilon_s \sim \mathcal{N}(0, \phi_{\text{site}}^{-1})
-$$ where: - $\mu_g$ = average success probability for municipality $g$ - $\phi_{\text{site}}$ = precision at site level
-
-### Level 3: ANF-Level Parameters
-
-$$
-\mu_g \sim \text{Beta}(\alpha_g, \beta_g)
-$$ where: $$
-\begin{aligned}
-\alpha_g &= \mu_{\text{ANF}} \cdot \phi_{\text{municipio}} + 0.1 \\
-\beta_g &= (1 - \mu_{\text{ANF}}) \cdot \phi_{\text{municipio}} + 0.1
-\end{aligned}
-$$ *(0.1 added for numerical stability)*
-
-### Hyperpriors
+Model structure definition in JAGS.
 
 
-```{r JAGS model, echo=TRUE, message=FALSE, warning=FALSE}
-
+```{r JAGS, message=FALSE, warning=FALSE, include=FALSE}
 jags_data <- list(
   N_group = max(data$group_id),
   N_sites = nrow(data),
@@ -162,6 +128,9 @@ jags_data <- list(
   n_success = data$TESTES_ECQ_OK   # Vetor de sucessos
 )
 
+```
+
+```{r JAGS MODEL STRING, echo=TRUE}
 model_string <- "
 model {
   # Hiperparâmetros globais
@@ -194,7 +163,9 @@ model {
   }
 }
 "
+```
 
+```{r JAGS RUN, message=FALSE, warning=FALSE, include=FALSE}
 
 inits <- function() {
   list(
@@ -212,23 +183,188 @@ model <- jags.model(
   data = jags_data,
   inits = inits,
   n.chains = 4,
-  n.adapt = 500  # Aumentar fase de adaptação
+  n.adapt = 1000  # Aumentar fase de adaptação
 )
 
 samples <- coda.samples(
   model,
   variable.names = c("mu_anf", "mu_municipio", "theta_site"),
-  n.iter = 1000,
-  thin = 5
+  n.iter = 5000,
+  thin = 2
 )
 ```
 
-### Conclusions: Summarize your conclusions based on the results (process step 8). This section may be combined with the results section.
+```{r df_final, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+#Analise 
+# 1. Mapear group_id para ANF e Município
+group_map <- data %>%
+  distinct(group_id, ANF, MUNICIPIO)
 
-8.  Use the model
+# 2. Extrair estatísticas dos municípios
+municipio_stats <- samples %>%
+  spread_draws(mu_municipio[group_id]) %>%
+  group_by(group_id) %>%
+  summarise(
+    mean_municipio = mean(mu_municipio),
+    stddev_municipio = sd(mu_municipio),
+    hdi_inf_Mun = hdi(mu_municipio, credMass = 0.95)[1],
+    hdi_sup_Mun = hdi(mu_municipio, credMass = 0.95)[2]
+  ) %>%
+  left_join(group_map, by = "group_id")
 
--   Provide relevant posterior summaries.
--   Interpret the model results in the context of the problem.
--   Use the results to reach a conclusion.
--   Acknowledge shortcomings of the model or caveats for your results.
--   Write a report that does not exceed four pages (including figures and tables). It will be challenging to address all of the items above in so short a space. It is up to you to decide which parts should be emphasized and discussed in detail and which parts should merely be summarized in a sentence or two. Remember that a peer reviewer, after completing this course, should be able to re-create your results if you were to provide the data with your report (which you will not).
+# 3. Extrair estatísticas dos sites
+site_stats <- samples %>%
+  spread_draws(theta_site[site_index]) %>%  # site_index corresponde à ordem nos dados originais
+  group_by(site_index) %>%
+  summarise(
+    mean_site = mean(theta_site),
+    stddev_site = sd(theta_site),
+    hdi_inf = hdi(theta_site, credMass = 0.95)[1],
+    hdi_sup = hdi(theta_site, credMass = 0.95)[2]
+  ) %>%
+  mutate(site_index = as.integer(site_index))
+
+# 4. Combinar com dados originais
+final_df <- data %>%
+  mutate(site_index = row_number()) %>%  # Criar índice correspondente ao theta_site
+  left_join(site_stats, by = "site_index") %>%
+  left_join(municipio_stats, by = c("group_id", "ANF", "MUNICIPIO")) %>%
+  mutate(
+    FALHAS_ECQ = TESTES_ECQ - TESTES_ECQ_OK,
+    # Calcular métricas de impacto
+    FALHAS_ECQ_norm = (FALHAS_ECQ - min(FALHAS_ECQ)) / 
+      (max(FALHAS_ECQ) - min(FALHAS_ECQ) + 1e-8),
+    impacto = (1 - mean_site) * FALHAS_ECQ_norm,
+    rank = dense_rank(desc(impacto))
+  ) %>%
+  select(
+    ANF, MUNICIPIO, ENDERECO_ID,
+    hdi_inf, mean_site, hdi_sup,
+    hdi_inf_Mun, mean_municipio, hdi_sup_Mun,
+    TESTES_ECQ, TESTES_ECQ_OK, FALHAS_ECQ,
+    impacto, rank
+  ) %>%
+  arrange(ANF, MUNICIPIO, rank)
+
+# 5. Verificar e exportar
+if(nrow(final_df) == nrow(data)) {
+  write_xlsx(final_df, "priorizacao_sites_ECQ_R_OUT24.xlsx")
+  message("Arquivo exportado com sucesso!")
+} else {
+  warning("Verificar correspondência entre índices e dados!")
+}
+
+
+# Verificar primeiros rankings
+#final_df %>%
+#  select(ENDERECO_ID, impacto, rank) %>%
+#  head(10)
+
+# Extrair amostras de mu_anf
+mu_anf_samples <- samples %>%
+  spread_draws(mu_anf) %>%  # Extrai todas as amostras
+  mutate(parameter = "mu_anf")  # Para identificação
+
+# Calcular estatísticas sumárias
+mu_anf_stats <- mu_anf_samples %>%
+  group_by(parameter) %>%
+  summarise(
+    mean = mean(mu_anf),
+    std_dev = sd(mu_anf),
+    hdi_3 = hdi(mu_anf, credMass = 0.94)[1],
+    hdi_97 = hdi(mu_anf, credMass = 0.94)[2]
+  )
+
+# Formatar para exibição
+mu_anf_formatted <- mu_anf_stats %>%
+  mutate(
+    across(c(mean, std_dev, hdi_3, hdi_97), ~ round(., 3)),
+    hdi_interval = glue::glue("[{hdi_3}, {hdi_97}]")
+  ) %>%
+  select(parameter, mean, std_dev, hdi_interval)
+
+final_df_mun <- final_df %>% 
+  select(-TESTES_ECQ, -TESTES_ECQ_OK, -FALHAS_ECQ)
+
+```
+
+
+### Conclusions
+The application of the Bayesian hierarchical model enabled the identification of sites with performance significantly below average, highlighting priority areas for intervention. The consideration of credible intervals in the estimates reinforces the need for actions based on robust statistical evidence, aiming for the continuous improvement of network quality.
+
+This approach allows for a nuanced understanding of performance variability across different sites and municipalities, ensuring that interventions are targeted where they are most needed. By quantifying uncertainty through credible intervals, decision-makers can assess the reliability of the estimates and prioritize actions with greater confidence.
+
+
+In summary, the Bayesian hierarchical model provides a comprehensive framework for identifying underperforming areas and supports evidence-based decision-making to enhance overall network quality.
+
+
+
+\newpage
+\begin{landscape}
+```{r Tabela, echo=FALSE, message=FALSE, warning=FALSE}
+
+library(kableExtra)
+library(dplyr)
+final_df <- final_df%>% arrange(desc(impacto))
+# Format numeric columns & translate headers
+
+# Aqui fazemos o mesmo pipeline de antes:
+pretty_head <- final_df %>%
+  arrange(desc(impacto)) %>%
+  slice_head(n = 35) %>%
+  mutate(
+    across(
+      c(hdi_inf, mean_site, hdi_sup,
+        hdi_inf_Mun, mean_municipio, hdi_sup_Mun,
+        impacto),
+      ~ round(., 2)
+    ),
+    rank = as.integer(rank)
+  ) %>%
+  rename(
+    City           = MUNICIPIO,
+    Site                = ENDERECO_ID,
+    `HDI Inf.`          = hdi_inf,
+    `Avg.`        = mean_site,
+    `HDI Sup.`          = hdi_sup,
+    `HDI Inf`     = hdi_inf_Mun,
+    `Avg`   = mean_municipio,
+    `HDI Sup`     = hdi_sup_Mun,
+    Test              = TESTES_ECQ,
+    Succ            = TESTES_ECQ_OK,
+    Fail              = FALHAS_ECQ,
+    Impact             = impacto,
+    Prio          = rank
+  )
+pretty_head %>%
+  kable(
+    caption = "Amostra de Sites Prioritários",
+    align   = c("l", "l", "l", rep("c", 11)),
+    escape  = FALSE
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width        = FALSE,
+    font_size         = 8
+  ) %>%
+  # Cabeçalho de primeiro nível (agrupando colunas)
+  add_header_above(c(
+    " "                = 1,  # blank para rownames implícitos
+    "Identificação"    = 2,  # Município + Site
+    "Site — HDI"       = 3,  # HDI Inf / Média Site / HDI Sup
+    "Município — HDI"  = 3,  # HDI Mun. Inf / Média Município / HDI Mun. Sup
+    "Testes"           = 3,  # Testes / Sucessos / Falhas
+    "Impacto / Pri."   = 2   # Impacto + Prioridade
+  )) %>%
+  # Segundo nível: a linha de nomes original fica em negrito e cor de fundo
+  row_spec(0, bold = TRUE, background = "#005b96", color = "white") %>%
+  # Reduz padding das células
+  column_spec(1:14, extra_css = "padding:2px 4px;") %>%
+  # Destaques pontuais
+  column_spec(4:7, background = "#f7f7f7") %>%
+  column_spec(12, color = "white", background = "#d7191c")
+
+
+
+```
+\end{landscape}

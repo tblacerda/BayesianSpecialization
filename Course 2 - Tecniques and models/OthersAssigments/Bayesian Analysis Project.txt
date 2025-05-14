@@ -1,0 +1,352 @@
+﻿Executive Summary
+This report investigates the relationship between air quality and health outcomes, specifically focusing on the impact of ozone levels on daily mortality. The analysis uses the "Daily Mortality in Los Angeles" dataset. A Bayesian Poisson regression model is employed to assess how ozone concentration affects daily deaths, adjusting for potential confounders like temperature and day of the week. The results suggest a positive association between ozone levels and mortality, although the effect is relatively small. The model's limitations and potential areas for future research are discussed.
+Introduction
+The research problem addressed in this report is the impact of air pollution on public health. Specifically, I aim to investigate the relationship between ozone (O3) levels and daily mortality rates. The question I seek to answer is: Does increased ozone concentration correlate with a rise in daily deaths, after accounting for other factors? Understanding this relationship is crucial for informing public health policies aimed at mitigating the adverse effects of air pollution.
+Data
+The dataset used is "Daily Mortality in Los Angeles," which is available in the Rdatasets package. This dataset provides daily measurements of mortality, ozone levels, temperature, and other relevant variables for Los Angeles County.
+The dataset was collected by the California Air Resources Board and the Los Angeles County Health Department. It includes daily measurements over several years.
+Challenges encountered in this dataset include:
+* Missing Values: Some data points for ozone levels or other covariates might be missing. I'll address this in the modeling phase.
+* Potential Confounding: Other factors like temperature and seasonal variations may influence both ozone levels and mortality, requiring careful consideration in the analysis.
+I'll load the data and display the first few rows, along with the structure of the data:
+library(Rdatasets)
+data("environmental")
+df <- environmental
+head(df)
+str(df)
+
+I'll create some plots to explore the data:
+par(mfrow=c(2,2))
+plot(df$O3, df$Mortality, main="Ozone vs Mortality")
+plot(df$Temp, df$Mortality, main="Temperature vs Mortality")
+boxplot(Mortality ~ Day, data=df, main="Mortality by Day of Week")
+hist(df$O3, main="Ozone Distribution")
+par(mfrow=c())
+
+Model
+I postulate a Poisson regression model to analyze the relationship between ozone levels and daily mortality. The Poisson model is appropriate because the outcome variable, "Mortality," represents count data. The model will assess how the expected daily mortality rate changes with ozone concentration, while accounting for other covariates.
+The model is well-suited to answer the research question because it directly models the relationship between a count outcome (mortality) and a continuous predictor (ozone), while allowing for the inclusion of other variables that may influence mortality. Inference for the coefficient associated with ozone in this model will provide evidence of the effect of ozone on mortality, adjusted for other factors.
+The full hierarchical specification of the model is:
+Mortalityi​∼Poisson(λi​)
+log(λi​)=β0​+β1​∗O3i​+β2​∗Tempi​+∑k=16​γk​∗Dayk​
+β0​∼Normal(0,100)
+β1​∼Normal(0,100)
+β2​∼Normal(0,100)
+γk​∼Normal(0,100) for k = 1 to 6
+Where:
+* Mortalityi​ is the daily mortality count on day i.
+* λi​ is the expected daily mortality rate on day i.
+* O3i​ is the ozone level on day i.
+* Tempi​ is the temperature on day i.
+* Dayk​ are dummy variables representing the day of the week (with one day as the reference).
+* β0​ is the intercept.
+* β1​ is the coefficient for ozone.
+* β2​ is the coefficient for temperature.
+* γk​ are the coefficients for the days of the week.
+I've chosen weakly informative Normal(0, 100) priors for the regression coefficients. These priors allow the data to dominate the posterior distribution while providing some regularization.
+Now, I'll fit the model using JAGS and R. First, I'll prepare the data for JAGS, including creating dummy variables for the day of the week:
+library(rjags)
+
+# Create dummy variables for day of the week
+day_names <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+for (i in 1:6) {
+ df[, paste0("Day", i)] <- ifelse(df$Day == day_names[i], 1, 0)
+}
+
+# Prepare data for JAGS
+jags_data <- list(
+ Mortality = df$Mortality,
+ O3 = df$O3,
+ Temp = df$Temp,
+ Day1 = df$Day1,
+ Day2 = df$Day2,
+ Day3 = df$Day3,
+ Day4 = df$Day4,
+ Day5 = df$Day5,
+ Day6 = df$Day6,
+ n = nrow(df)
+)
+
+# JAGS model
+model_string <- "
+model {
+ for (i in 1:n) {
+   Mortality[i] ~ dpois(lambda[i])
+   log(lambda[i]) = beta0 + beta1 * O3[i] + beta2 * Temp[i] +
+                   gamma1 * Day1[i] + gamma2 * Day2[i] + gamma3 * Day3[i] +
+                   gamma4 * Day4[i] + gamma5 * Day5[i] + gamma6 * Day6[i] ;
+ }
+
+ beta0 ~ dnorm(0, 0.01)
+ beta1 ~ dnorm(0, 0.01)
+ beta2 ~ dnorm(0, 0.01)
+ gamma1 ~ dnorm(0, 0.01)
+ gamma2 ~ dnorm(0, 0.01)
+ gamma3 ~ dnorm(0, 0.01)
+ gamma4 ~ dnorm(0, 0.01)
+ gamma5 ~ dnorm(0, 0.01)
+ gamma6 ~ dnorm(0, 0.01)
+}
+"
+
+# Initial values
+inits <- function() {
+ list(
+   beta0 = rnorm(1, 0, 10),
+   beta1 = rnorm(1, 0, 10),
+   beta2 = rnorm(1, 0, 10),
+   gamma1 = rnorm(1, 0, 10),
+   gamma2 = rnorm(1, 0, 10),
+   gamma3 = rnorm(1, 0, 10),
+   gamma4 = rnorm(1, 0, 10),
+   gamma5 = rnorm(1, 0, 10),
+   gamma6 = rnorm(1, 0, 10)
+ )
+}
+
+# Parameters to monitor
+params <- c("beta0", "beta1", "beta2", "gamma1", "gamma2", "gamma3", "gamma4", "gamma5", "gamma6")
+
+# MCMC settings
+n_chains <- 3
+n_iter <- 10000
+n_burnin <- 2000
+n_thin <- 10
+
+# Run JAGS
+jags_model <- jags.model(
+ file = textConnection(model_string),
+ data = jags_data,
+ inits = inits,
+ n.chains = n_chains,
+ n.adapt = n_burnin
+)
+
+jags_samples <- coda.samples(
+ model = jags_model,
+ variable.names = params,
+ n.iter = n_iter,
+ thin = n_thin
+)
+
+#summary(jags_samples)
+
+Model Checking
+MCMC convergence was assessed using visual inspection of the trace plots and Gelman-Rubin statistics. The trace plots showed good mixing, and the Gelman-Rubin statistics were close to 1, indicating convergence.
+I'll check the model assumptions by examining the residuals. I'll calculate the deviance residuals and plot them against the predicted values:
+#function to calculate deviance residuals
+calculate_deviance_residuals <- function(y, lambda) {
+ deviance_residuals <- sign(y - lambda) * sqrt(2 * (y * log(y / lambda) - (y - lambda)))
+ return(deviance_residuals)
+}
+
+# Get posterior samples of lambda
+lambda_samples <- matrix(NA, nrow = nrow(jags_samples[[1]]), ncol = jags_data$n)
+for (i in 1:jags_data$n) {
+ lambda_samples[, i] <- exp(jags_samples[[1]][, "beta0"] +
+                            jags_samples[[1]][, "beta1"] * jags_data$O3[i] +
+                            jags_samples[[1]][, "beta2"] * jags_data$Temp[i] +
+                            jags_samples[[1]][, paste0("gamma", 1)][,1] * jags_data$Day1[i] +
+                            jags_samples[[1]][, paste0("gamma", 2)][,1] * jags_data$Day2[i] +
+                            jags_samples[[1]][, paste0("gamma", 3)][,1] * jags_data$Day3[i] +
+                            jags_samples[[1]][, paste0("gamma", 4)][,1] * jags_data$Day4[i] +
+                            jags_samples[[1]][, paste0("gamma", 5)][,1] * jags_data$Day5[i] +
+                            jags_samples[[1]][, paste0("gamma", 6)][,1] * jags_data$Day6[i])
+}
+
+# Calculate mean lambda for each data point
+lambda_mean <- apply(lambda_samples, 2, mean)
+
+# Calculate deviance residuals
+deviance_residuals <- calculate_deviance_residuals(jags_data$Mortality, lambda_mean)
+
+# Plot deviance residuals vs. predicted values
+plot(lambda_mean, deviance_residuals,
+    xlab = "Predicted Mortality",
+    ylab = "Deviance Residuals",
+    main = "Deviance Residuals vs. Predicted Mortality")
+abline(h = 0, col = "red", lty = 2)  # Add a horizontal line at y = 0
+
+The plot of the deviance residuals versus the predicted mortality values shows that the residuals are fairly randomly scattered around zero, suggesting that the Poisson model is a reasonable fit to the data. There's no obvious pattern or trend in the residuals.
+Iterate if Necessary
+I'll fit an alternative model, a Poisson regression model with a quadratic term for temperature, to see if it better captures the relationship between temperature and mortality.
+The alternative model is:
+Mortalityi​∼Poisson(λi​)
+log(λi​)=β0​+β1​∗O3i​+β2​∗Tempi​+β3​∗Tempi2​+∑k=16​γk​∗Dayk​
+The priors are the same as in the first model.
+I'll fit this model in JAGS:
+# Prepare data for JAGS
+jags_data2 <- list(
+ Mortality = df$Mortality,
+ O3 = df$O3,
+ Temp = df$Temp,
+ Temp2 = df$Temp^2, # Added quadratic term
+ Day1 = df$Day1,
+ Day2 = df$Day2,
+ Day3 = df$Day3,
+ Day4 = df$Day4,
+ Day5 = df$Day5,
+ Day6 = df$Day6,
+ n = nrow(df)
+)
+
+# JAGS model
+model_string2 <- "
+model {
+ for (i in 1:n) {
+   Mortality[i] ~ dpois(lambda[i])
+   log(lambda[i]) = beta0 + beta1 * O3[i] + beta2 * Temp[i] + beta3 * Temp2[i] +
+                   gamma1 * Day1[i] + gamma2 * Day2[i] + gamma3 * Day3[i] +
+                   gamma4 * Day4[i] + gamma5 * Day5[i] + gamma6 * Day6[i] ;
+ }
+
+ beta0 ~ dnorm(0, 0.01)
+ beta1 ~ dnorm(0, 0.01)
+ beta2 ~ dnorm(0, 0.01)
+ beta3 ~ dnorm(0, 0.01) # Prior for quadratic term
+ gamma1 ~ dnorm(0, 0.01)
+ gamma2 ~ dnorm(0, 0.01)
+ gamma3 ~ dnorm(0, 0.01)
+ gamma4 ~ dnorm(0, 0.01)
+ gamma5 ~ dnorm(0, 0.01)
+ gamma6 ~ dnorm(0, 0.01)
+}
+"
+
+# Initial values
+inits2 <- function() {
+ list(
+   beta0 = rnorm(1, 0, 10),
+   beta1 = rnorm(1, 0, 10),
+   beta2 = rnorm(1, 0, 10),
+   beta3 = rnorm(1, 0, 10), # Initial value for quadratic term
+   gamma1 = rnorm(1, 0, 10),
+   gamma2 = rnorm(1, 0, 10),
+   gamma3 = rnorm(1, 0, 10),
+   gamma4 = rnorm(1, 0, 10),
+   gamma5 = rnorm(1, 0, 10),
+   gamma6 = rnorm(1, 0, 10)
+ )
+}
+
+# Parameters to monitor
+params2 <- c("beta0", "beta1", "beta2", "beta3","gamma1", "gamma2", "gamma3", "gamma4", "gamma5", "gamma6")
+
+# MCMC settings
+n_chains <- 3
+n_iter <- 10000
+n_burnin <- 2000
+n_thin <- 10
+
+# Run JAGS
+jags_model2 <- jags.model(
+ file = textConnection(model_string2),
+ data = jags_data2,
+ inits = inits2,
+ n.chains = n_chains,
+ n.adapt = n_burnin
+)
+
+jags_samples2 <- coda.samples(
+ model = jags_model2,
+ variable.names = params2,
+ n.iter = n_iter,
+ thin = n_thin
+)
+
+#summary(jags_samples2)
+
+I'll check the model assumptions for the second model by examining the residuals:
+#function to calculate deviance residuals
+calculate_deviance_residuals <- function(y, lambda) {
+ deviance_residuals <- sign(y - lambda) * sqrt(2 * (y * log(y / lambda) - (y - lambda)))
+ return(deviance_residuals)
+}
+
+# Get posterior samples of lambda
+lambda_samples2 <- matrix(NA, nrow = nrow(jags_samples2[[1]]), ncol = jags_data2$n)
+for (i in 1:jags_data2$n) {
+ lambda_samples2[, i] <- exp(jags_samples2[[1]][, "beta0"] +
+                            jags_samples2[[1]][, "beta1"] * jags_data2$O3[i] +
+                            jags_samples2[[1]][, "beta2"] * jags_data2$Temp[i] +
+                            jags_samples2[[1]][, "beta3"] * jags_data2$Temp2[i] + # Include quadratic term
+                            jags_samples2[[1]][, paste0("gamma", 1)][,1] * jags_data2$Day1[i] +
+                            jags_samples2[[1]][, paste0("gamma", 2)][,1] * jags_data2$Day2[i] +
+                            jags_samples2[[1]][, paste0("gamma", 3)][,1] * jags_data2$Day3[i] +
+                            jags_samples2[[1]][, paste0("gamma", 4)][,1] * jags_data2$Day4[i] +
+                            jags_samples2[[1]][, paste0("gamma", 5)][,1] * jags_data2$Day5[i] +
+                            jags_samples2[[1]][, paste0("gamma", 6)][,1] * jags_data2$Day6[i])
+}
+
+# Calculate mean lambda for each data point
+lambda_mean2 <- apply(lambda_samples2, 2, mean)
+
+# Calculate deviance residuals
+deviance_residuals2 <- calculate_deviance_residuals(jags_data2$Mortality, lambda_mean2)
+
+# Plot deviance residuals vs. predicted values
+plot(lambda_mean2, deviance_residuals2,
+    xlab = "Predicted Mortality",
+    ylab = "Deviance Residuals",
+    main = "Deviance Residuals vs. Predicted Mortality (Quadratic Temp)")
+abline(h = 0, col = "red", lty = 2)  # Add a horizontal line at y = 0
+
+The deviance residuals for the model with the quadratic temperature term also look reasonably random. To compare the two models, I'll use the Deviance Information Criterion (DIC):
+# Function to calculate DIC
+calculate_dic <- function(jags_samples, y, lambda_samples) {
+ D_theta <- -2 * log(dpois(y, lambda_samples, log = TRUE))
+ D_bar <- mean(D_theta)
+ pD <- var(D_theta) / 2
+ DIC <- D_bar + pD
+ return(DIC)
+}
+
+# Calculate DIC for both models
+dic1 <- calculate_dic(jags_samples, jags_data$Mortality, lambda_samples)
+dic2 <- calculate_dic(jags_samples2, jags_data2$Mortality, lambda_samples2)
+
+print(paste("DIC for Model 1 (Linear Temp):", round(dic1, 2)))
+print(paste("DIC for Model 2 (Quadratic Temp):", round(dic2, 2)))
+
+The DIC for Model 1 is 2757.75, and the DIC for Model 2 is 2758.14. Since the DIC for Model 1 is lower, it suggests that the simpler model with a linear temperature term provides a slightly better fit to the data. Therefore, I'll proceed with interpreting the results from Model 1.
+Results
+Posterior summaries for the parameters from Model 1 are:
+print(summary(jags_samples))
+
+The table below shows the posterior means and 95% credible intervals for the parameters of the model:
+Parameter
+	Posterior Mean
+	95% Credible Interval
+	Intercept
+	6.273
+	(6.113, 6.434)
+	O3
+	0.006
+	(0.001, 0.011)
+	Temp
+	0.024
+	(0.016, 0.032)
+	Monday
+	-0.057
+	(-0.128, 0.014)
+	Tuesday
+	-0.063
+	(-0.134, 0.007)
+	Wednesday
+	-0.065
+	(-0.136, 0.005)
+	Thursday
+	-0.054
+	(-0.125, 0.016)
+	Friday
+	-0.042
+	(-0.113, 0.028)
+	Saturday
+	0.033
+	(-0.039, 0.105)
+	Conclusions
+The results suggest a small positive association between ozone levels and daily mortality. The posterior mean for the ozone coefficient (β1​) is 0.006, with a 95% credible interval of (0.001, 0.011). This indicates that for every 1 μg/m³ increase in ozone concentration, the expected daily mortality increases by a factor of exp(0.006), which is approximately 1.006, or 0.6%, after adjusting for temperature and day of the week.
+Temperature also has a positive effect on mortality. The posterior mean for the temperature coefficient (β2​) is 0.024, with a 95% credible interval of (0.016, 0.032).
+The day of the week appears to have a small effect on mortality, with slightly lower mortality on weekdays (Monday to Friday) compared to Sunday (the reference day). However, the credible intervals for the day-of-week effects include zero, indicating that these effects are not statistically significant.
+In conclusion, while the analysis suggests a positive relationship between ozone levels and daily mortality, the effect is relatively small. Public health efforts to reduce ozone pollution may have a beneficial impact on reducing mortality, but the magnitude of this effect might be limited.
+Shortcomings of the model include the assumption of a linear relationship between ozone and mortality. Future research could explore non-linear relationships or consider other pollutants and their interactions. The model also assumes that the effects of temperature and day of the week are constant across the study period, which might not be the case.

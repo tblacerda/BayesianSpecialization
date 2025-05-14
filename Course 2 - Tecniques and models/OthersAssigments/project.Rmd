@@ -1,0 +1,153 @@
+---
+title: "data analysis project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, cache=TRUE)
+set.seed(85)
+```
+
+## Introduction
+
+The data set that we will analyze is the one available in the course, the callers data.
+
+## Exploratory Data Analysis
+
+The summary of the data set is
+
+```{r read in data and summary}
+library(rjags)
+library(ggplot2)
+library(readr)
+callers <- read_csv("https://raw.githubusercontent.com/007v/Bayesian-Statistics-Techniques-and-Models--University-of-California-Santa-Cruz---Coursera/master/callers.csv")
+
+#callers$isgroup2 = as.factor(callers$isgroup2)
+# prob = mean(df$Response.Time_ms[df$Voltage==30] <= df$Response.Time_ms[df$Voltage==24])
+# data_resp_time = df$Response.Time_ms
+summary(callers)
+```
+
+
+### Plots
+
+In the interest of report length, we only show the following density plot that illustrates the distribution of response time.
+
+
+```{r pairs plot of data}
+#library(GGally)
+#ggpairs(df[,c(1,2,6,9)], aes(color=Voltage, alpha=0.4))
+
+p <- ggplot(data=callers, aes(x=calls))
+p <- p + geom_density()
+print(p)
+
+#p <- ggplot(data=df, aes(x=Response.Time_ms, color=Voltage, group=Voltage))
+#p <- p + geom_density()
+#print(p)
+
+#p <- ggplot(df, aes(Voltage, Response.Time_ms))
+#p <- p + geom_boxplot(outlier.colour = "red", outlier.shape = 1, aes(color=Fluid))
+#p <- p + + geom_jitter(width=0.2)
+#print(p)
+```
+
+## Modeling
+
+Here we will fit a Bayesian linear model from which we will see which predictors affect response time.
+The coefficients of the predictors are
+
+- b[1]: intercept,
+- b[2]: days_active,
+- b[3]: isgroup2,
+- b[4]: age
+
+
+```{r jags model}
+
+callers$logresponse = log(callers$calls)
+callers$calls <- NULL
+
+n.interaction.terms = 4
+n.chains = 3
+n.burn.iter = 5000
+n.iter = 100000
+
+# Make model matrix for interactions
+#M = model.matrix(logresponse ~ .^2, df)
+
+mod_string = " model {
+  for (i in 1:n) {
+    y[i] ~ dnorm(mu[i], prec)
+    mu[i] = b[1]+b[2]*days_active[i]+b[3]*isgroup2[i]+b[4]*age[i]
+  }
+  
+  for (j in 1:m) {
+    b[j] ~ dnorm(0.0, 1.0/1.0e2)
+  }
+  
+  prec ~ dgamma(5/2.0, 2*10.0/2.0)
+  sig2 = 1.0/prec
+  sig = sqrt(sig2)
+} "
+
+data_jags = list(n=nrow(callers), 
+                 m=n.interaction.terms, 
+                 y=callers$logresponse,
+                 days_active=callers$days_active,
+                 isgroup2 = callers$isgroup2,
+                 age = callers$age
+                 )
+params = c("b", "sig2")
+mod = jags.model(textConnection(mod_string), data=data_jags, n.chains=n.chains)
+update(mod, n.burn.iter) # burn-in
+mod_sim = coda.samples(model=mod,
+                       variable.names = params,
+                       n.iter = n.iter)
+mod_csim = do.call(rbind, mod_sim) # combine multiple chains
+#gelman.diag(mod_sim)
+#autocorr.diag(mod_sim)
+#autocorr.plot(mod_sim)
+#effectiveSize(mod_sim)
+#summary(mod_sim)
+
+```
+
+we get the following autocorrelation diagnostics
+
+```{r}
+autocorr.diag(mod_sim)
+```
+
+Here, we see that not all of the parameters have converged, giving the following effective sample sizes
+```{r}
+effectiveSize(mod_sim)
+```
+
+However, we are interested in the means of the coefficients which are
+```{r}
+pm_params = colMeans(mod_csim)
+pm_params
+```
+
+The plot of the residuals shows that we have some dependency on the variance with respect to the data point.
+
+## Results
+The following plot superinposes the log response time distributions of the data and resulting model.
+
+```{r density plots, fig.height=3, fig.width=6}
+modeled_data = data.frame(calls=exp(log_yhat), vec='model')
+observed_data = data.frame(calls=data_resp_time, vec='observed')
+data = rbind(modeled_data, observed_data)
+p <- ggplot(data, aes(calls, group=vec, col=vec)) + geom_density()
+print(p)
+```
+
+
+```{r}
+n_sum = nrow(mod_csim)
+X.24 = X[X[,6]==1,]
+X.30 = X[X[,6]==0,]
+mod_csim = mod_csim[, seq(1,9+n.interaction.terms)]
+prob
+```

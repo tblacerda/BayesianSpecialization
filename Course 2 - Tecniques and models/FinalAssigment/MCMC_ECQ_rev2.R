@@ -27,6 +27,8 @@ group_df <- data %>%
   arrange(group_id)
 
 
+
+
 jags_data <- list(
   N_group = max(data$group_id),
   N_sites = nrow(data),
@@ -85,14 +87,14 @@ model <- jags.model(
   data = jags_data,
   inits = inits,
   n.chains = 4,
-  n.adapt = 5000  # Aumentar fase de adaptação
+  n.adapt = 1000  # Aumentar fase de adaptação
 )
 
 samples <- coda.samples(
   model,
   variable.names = c("mu_anf", "mu_municipio", "theta_site"),
-  n.iter = 10000,
-  thin = 5
+  n.iter = 1000,
+  thin = 2
 )
 
 # Verificar convergência
@@ -100,7 +102,7 @@ gelman.diag(samples)
 effectiveSize(samples)
 traceplot(samples)
 raftery.diag(samples) #para saber a quantidade de samples 
-
+gelman.plot(samples)
 # Analisar resultados
 summary(samples)
 
@@ -167,6 +169,7 @@ if(nrow(final_df) == nrow(data)) {
 # Visualizar estrutura dos dados processados
 glimpse(final_df)
 
+
 # Verificar primeiros rankings
 final_df %>%
   select(ENDERECO_ID, impacto, rank) %>%
@@ -195,7 +198,167 @@ mu_anf_formatted <- mu_anf_stats %>%
   ) %>%
   select(parameter, mean, std_dev, hdi_interval)
 
-mu_anf_formatted
+final_df_mun <- final_df %>% 
+  select(-TESTES_ECQ, -TESTES_ECQ_OK, -FALHAS_ECQ)
 
+
+final_df
 
 dic.samples(model,n.iter = 1e3)
+
+head(final_df)
+head(final_df)
+
+#####
+
+library(ggplot2)
+library(ggrepel)
+library(dplyr)  
+
+data_amostrada <- data %>% 
+  slice_sample(prop = 0.5)  # ou sample_n(100) para 100 pontos fixos
+
+ggplot(data_amostrada, aes(
+  x = TESTES_ECQ,
+  y = TESTES_ECQ_OK / TESTES_ECQ,
+  label = ENDERECO_ID
+)) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_text_repel(
+    size = 3,
+    max.overlaps = 5
+  ) +
+  scale_y_continuous(labels = scales::percent_format(1)) +
+  labs(
+    title = "ECQ Tests vs. Success Rate (Random Sample)",
+    x = "Number of ECQ Tests",
+    y = "Success Rate (ECQ_OK / ECQ)",
+    caption = "Points represent a random sample of network sites (ENDERECO_ID)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.title = element_text(face = "bold")
+  )
+
+####
+
+
+# Gráficos agregados
+plot_grid(
+  traceplot(samples[,c("mu_anf", "sigma_global")], ncol = 1),
+  densplot(samples[,sample(grep("mu_municipio", varnames(samples)), 9)]),
+  ncol = 2
+)
+
+#######
+
+head(final_df)
+
+# Passo 1: Filtrar municípios com 5+ sites
+mun_5plus <- final_df %>%
+  group_by(MUNICIPIO) %>%
+  filter(n() >= 30) %>%  # Conta linhas (cada linha = 1 site)
+  ungroup() %>%
+  distinct(MUNICIPIO)  # Lista de municípios elegíveis
+
+# Passo 2: Aplicar filtro aos dados
+final_df_filtrado <- final_df %>%
+  semi_join(mun_5plus, by = "MUNICIPIO")
+
+df_mun_filtrado <- final_df_filtrado %>%
+  group_by(MUNICIPIO) %>%
+  summarise(
+    mean_mun = mean(mean_municipio),
+    hdi_low = mean(hdi_inf_Mun),
+    hdi_high = mean(hdi_sup_Mun),
+    n_sites = n(),  # Número real de sites
+    hdi_width = hdi_high - hdi_low
+  ) %>%
+  ungroup() %>%
+  mutate(MUNICIPIO = fct_reorder(MUNICIPIO, mean_mun))
+
+# Passo 3: Atualizar o plot
+ggplot() +
+  geom_errorbar(
+    data = df_mun_filtrado,
+    aes(x = MUNICIPIO, ymin = hdi_low, ymax = hdi_high, alpha = n_sites),
+    width = 0.2, color = "gray40"
+  ) +
+  geom_point(
+    data = df_mun_filtrado,
+    aes(x = MUNICIPIO, y = mean_mun, size = hdi_width, fill = n_sites),
+    shape = 21, stroke = 0.5
+  ) +
+  geom_point(
+    data = filter(final_df_filtrado, rank <= 20),
+    aes(x = MUNICIPIO, y = mean_site),
+    shape = 4, size = 3, color = "red"
+  ) +
+  
+  # Novidade: Texto repelido
+  geom_text_repel(
+    data = filter(final_df_filtrado, rank <= 20),
+    aes(x = MUNICIPIO, y = mean_site, label = ENDERECO_ID),
+    color = "red",
+    direction = "y",  # Direção prioritária do repel
+    nudge_y = 0.05,   # Deslocamento vertical inicial
+    segment.color = "red",
+    segment.size = 0.3,
+    size = 3,
+    max.overlaps = 20  # Permite mais overlaps controlados
+  ) +
+  scale_fill_viridis_c("Nº Sites", option = "viridis", breaks = seq(5, max(df_mun_filtrado$n_sites), 50)) +
+  scale_alpha_continuous("Nº Sites", range = c(0.5, 1)) +
+  scale_size_continuous("Uncertainty", range = c(2, 8)) +
+  labs(
+    x = "Municipality (≥30 sites)",
+    caption = "Red Crosses: Worst sites in each municipality",
+    title = "Average ECQ Success Rate by Municipality x Worst Sites",
+  ) +
+  coord_flip() +
+  theme_minimal()
+
+
+library(kableExtra)
+library(dplyr)
+final_df <- final_df%>% arrange(desc(impacto))
+# Format numeric columns & translate headers
+pretty_head <- final_df %>%
+  head(20) %>%
+  mutate(
+    across(c(hdi_inf, mean_site, hdi_sup, hdi_inf_Mun, mean_municipio, hdi_sup_Mun, impacto),
+           ~ round(., 3)),
+    rank = as.integer(rank)
+  ) %>%
+  rename(
+    Município = MUNICIPIO,
+    Site = ENDERECO_ID,
+    `HDI Inf.` = hdi_inf,
+    `Média Site` = mean_site,
+    `HDI Sup.` = hdi_sup,
+    `HDI Mun. Inf.` = hdi_inf_Mun,
+    `Média Município` = mean_municipio,
+    `HDI Mun. Sup.` = hdi_sup_Mun,
+    Testes = TESTES_ECQ,
+    Sucessos = TESTES_ECQ_OK,
+    Falhas = FALHAS_ECQ,
+    Impacto = impacto,
+    Prioridade = rank
+  )
+
+# Create formatted table
+pretty_head %>%
+  kable(
+    align = c("l", "l", "l", rep("c", 11)),
+    caption = "Amostra de Sites Prioritários (Top 6)"
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE,
+    font_size = 12
+  ) %>%
+  column_spec(4:7, background = "#f7f7f7") %>%  # Highlight HDI columns
+  column_spec(12, color = "white", background = "#d7191c") %>%  # Priority
+  row_spec(0, bold = TRUE, background = "#005b96", color = "white") %>%  # Header
+  add_header_above(c(" " = 3, "Site" = 3, "Município" = 3, "Testes" = 3, " " = 2))
