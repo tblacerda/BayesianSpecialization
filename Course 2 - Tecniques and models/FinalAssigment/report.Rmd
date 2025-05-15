@@ -1,17 +1,19 @@
 ---
-title: "Graded Assignment: Data Analysis Project"
-subtitle: "Bayesian Statistics Specialization: Course 2, Techniques and Models"
+title: 'Graded Assignment: Data Analysis Project'
 author: "Tiago B. Lacerda"
 date: "2025-05-11"
 output:
+  html_document:
+    df_print: paged
   pdf_document:
     latex_engine: xelatex
+subtitle: 'Bayesian Statistics Specialization: Course 2, Techniques and Models'
 header-includes:
-  - \usepackage{fontspec}
-  - \usepackage{amsmath}
-  - \usepackage[utf8]{inputenc}
-  - \usepackage{pdflscape}
-  - \setlength{\tabcolsep}{3pt}
+- \usepackage{fontspec}
+- \usepackage{amsmath}
+- \usepackage[utf8]{inputenc}
+- \usepackage{pdflscape}
+- \setlength{\tabcolsep}{3pt}
 ---
 
 ```{r setup, include=FALSE}
