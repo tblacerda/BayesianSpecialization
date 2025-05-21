@@ -2,15 +2,22 @@ library(readxl)
 library(dplyr)
 library(rjags)
 library(coda)
+library(tidybayes)
 
-# Carregar e preparar os dados com group_id
 data <- read_excel("DADOS BRUTOS/ECQ_ABR_25.xlsx", sheet = "Export") %>%
-  head(-2) %>% 
+  head(-2) %>%
+  select(ANF, MUNICIPIO, TESTES_ECQ, ECQ) %>%
   mutate(
     TESTES_ECQ_OK = round(TESTES_ECQ * ECQ, 0)
   ) %>%
   group_by(ANF, MUNICIPIO) %>%
-  mutate(group_id = cur_group_id()) %>%  # Criar group_id no dado original
+  summarise(
+    TESTES_ECQ = sum(TESTES_ECQ, na.rm = TRUE),
+    TESTES_ECQ_OK = sum(TESTES_ECQ_OK, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  group_by(ANF, MUNICIPIO) %>%
+  mutate(group_id = cur_group_id()) %>%
   ungroup()
 
 
@@ -79,30 +86,24 @@ samples <- coda.samples(
   thin = 2
 )
 
-# Verificar convergência
-gelman.diag(samples)
-effectiveSize(samples)
-traceplot(samples)
-raftery.diag(samples) #para saber a quantidade de samples 
-#gelman.plot(samples)
-# Analisar resultados
-summary(samples)
 
 #Analise 
 # 1. Mapear group_id para ANF e Município
 group_map <- data %>%
   distinct(group_id, ANF, MUNICIPIO)
 
-# 2. Extrair estatísticas dos municípios
 municipio_stats <- samples %>%
   spread_draws(mu_municipio[group_id]) %>%
   group_by(group_id) %>%
   summarise(
     mean_municipio = mean(mu_municipio),
     stddev_municipio = sd(mu_municipio),
-    hdi_inf_Mun = hdi(mu_municipio, credMass = 0.95)[1],
-    hdi_sup_Mun = hdi(mu_municipio, credMass = 0.95)[2]
+    hdi_inf_Mun = hdi(mu_municipio, credMass = 0.95, na.rm = TRUE)[1],  # <- Fix here
+    hdi_sup_Mun = hdi(mu_municipio, credMass = 0.95, na.rm = TRUE)[2]   # <- And here
   ) %>%
   left_join(group_map, by = "group_id")
 
+
 municipio_stats
+
+mcmc(samples, pars = "mu_municipio[128]")  # Replace 128 with the problematic group
