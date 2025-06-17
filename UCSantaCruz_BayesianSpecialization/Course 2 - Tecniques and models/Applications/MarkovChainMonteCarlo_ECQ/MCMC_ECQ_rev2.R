@@ -10,8 +10,8 @@ library(tidyverse)
 
 
 # Carregar e filtrar dados
-data <- read_excel("DADOS BRUTOS/ECQ_ABR_25.xlsx", sheet = "Export") %>%
-  filter(ANF == 83) %>%
+data <- read_excel("DADOS BRUTOS/ECQ_MAI_25.xlsx", sheet = "Export") %>%
+  filter(ANF == 81) %>%
   mutate(TESTES_ECQ_OK = round(TESTES_ECQ * ECQ, 0))  # Recriar a variável resposta
 
 # Criar IDs únicos para grupos (agora só ANF 83)
@@ -156,7 +156,7 @@ final_df <- data %>%
 
 # 5. Verificar e exportar
 if(nrow(final_df) == nrow(data)) {
-  write_xlsx(final_df, "priorizacao_sites_ECQ_R_ABR25.xlsx")
+  write_xlsx(final_df, "81_priorizacao_sites_ECQ_R_MAI25.xlsx")
   message("Arquivo exportado com sucesso!")
 } else {
   warning("Verificar correspondência entre índices e dados!")

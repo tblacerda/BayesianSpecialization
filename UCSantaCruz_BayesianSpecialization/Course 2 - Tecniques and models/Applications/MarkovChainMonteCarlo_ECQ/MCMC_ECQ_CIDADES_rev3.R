@@ -4,7 +4,7 @@ library(rjags)
 library(coda)
 library(tidybayes)
 
-data <- read_excel("DADOS BRUTOS/ECQ_ABR_25.xlsx", sheet = "Export") %>%
+data <- read_excel("DADOS BRUTOS/ECQ_MAI_25.xlsx", sheet = "Export") %>%
   head(-2) %>%
   select(ANF, MUNICIPIO, TESTES_ECQ, ECQ) %>%
   mutate(
